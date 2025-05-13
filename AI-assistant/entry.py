@@ -3,9 +3,10 @@ from assistant.speech import SpeechEngine
 from assistant.commands import handle_query
 from assistant.utils import get_greeting
 from assistant.plugins import reminders
+from flask_cors import CORS
 
 app = Flask(__name__)
-
+CORS(app)
 speech_engine = SpeechEngine()
 reminders.start_scheduler_thread()
 
@@ -22,6 +23,7 @@ def query():
 
     # Handle the query and get a response (simulate speaking)
     flag,response = handle_query(user_query, speech_engine)
+    print(response)
     # If handle_query returns True/False, you may want to capture actual text output
     # For now, let's assume it returns a response string
     return jsonify({"response": response})

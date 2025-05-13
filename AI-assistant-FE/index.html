@@ -1,19 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Zara AI Assistant</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2em; }
-    #response { margin-top: 1em; font-weight: bold; }
-    #status { color: green; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      max-width: 600px;
+    }
+    #response {
+      margin-top: 1em;
+      font-weight: bold;
+      background: #f0f0f0;
+      padding: 1em;
+      border-radius: 8px;
+      min-height: 50px;
+    }
+    #transcript {
+      margin-top: 0.5em;
+      font-style: italic;
+      color: #555;
+    }
+    #status {
+      color: green;
+      margin-left: 10px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    input[type="text"] {
+      width: calc(100% - 130px);
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    form {
+      margin-top: 1em;
+      display: flex;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
   <h1>Zara AI Assistant</h1>
+
   <button id="speakBtn">🎤 Speak</button>
   <span id="status"></span>
+
   <div id="transcript"></div>
+
+  <form id="textForm">
+    <input type="text" id="textInput" placeholder="Or type your query here..." autocomplete="off" />
+    <button type="submit">Send</button>
+  </form>
+
   <div id="response"></div>
 
   <script>
@@ -21,16 +74,17 @@
     const transcriptDiv = document.getElementById('transcript');
     const responseDiv = document.getElementById('response');
     const statusSpan = document.getElementById('status');
+    const textForm = document.getElementById('textForm');
+    const textInput = document.getElementById('textInput');
 
-    // Check for browser support
+    // Speech Recognition setup
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
     if (!SpeechRecognition) {
       alert("Sorry, your browser does not support Speech Recognition.");
       speakBtn.disabled = true;
-    }
-
-    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if (recognition) {
+    } else {
+      recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
@@ -61,15 +115,18 @@
       };
     }
 
+    // Send query to backend and handle response
     function sendQuery(text) {
-      fetch('http://YOUR_PC_IP:5000/query', {
+      fetch('http://127.0.0.1:5000/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text })
       })
       .then(response => response.json())
       .then(data => {
-        responseDiv.textContent = "Zara: " + (data.response || data.error || "No response");
+        const reply = data.response || data.error || "No response";
+        responseDiv.textContent = "Zara: " + reply;
+        speakText(reply);
         statusSpan.textContent = "";
       })
       .catch(err => {
@@ -77,6 +134,51 @@
         statusSpan.textContent = "";
       });
     }
+
+    // Text-to-Speech function
+    function speakText(text) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+
+    // Get available voices asynchronously
+    const voices = window.speechSynthesis.getVoices();
+
+    // Filter female English voices
+    const femaleVoices = voices.filter(voice => 
+      voice.lang.startsWith('en') && 
+      (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('woman') || voice.name.toLowerCase().includes('zira') || voice.name.toLowerCase().includes('susan') || voice.name.toLowerCase().includes('karen'))
+    );
+
+    // Pick first female voice or fallback to default
+    if (femaleVoices.length > 0) {
+      utterance.voice = femaleVoices[0];
+    } else if (voices.length > 0) {
+      utterance.voice = voices[0];
+    }
+
+    // Adjust pitch and rate for softness and naturalness
+    utterance.pitch = 1;  // 0.8 to 1.2 is good range
+    utterance.rate = 0.9; // slower for clarity
+    utterance.volume = 1; // max volume
+
+    window.speechSynthesis.speak(utterance);
+  } else {
+    console.warn("Text-to-Speech not supported in this browser.");
+  }
+}
+
+
+    // Handle text input form submission
+    textForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const text = textInput.value.trim();
+      if (text) {
+        transcriptDiv.textContent = "You typed: " + text;
+        sendQuery(text);
+        textInput.value = '';
+      }
+    });
   </script>
 </body>
 </html>
