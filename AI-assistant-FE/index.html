@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Zara AI Assistant</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    #response { margin-top: 1em; font-weight: bold; }
+    #status { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Zara AI Assistant</h1>
+  <button id="speakBtn">🎤 Speak</button>
+  <span id="status"></span>
+  <div id="transcript"></div>
+  <div id="response"></div>
+
+  <script>
+    const speakBtn = document.getElementById('speakBtn');
+    const transcriptDiv = document.getElementById('transcript');
+    const responseDiv = document.getElementById('response');
+    const statusSpan = document.getElementById('status');
+
+    // Check for browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Sorry, your browser does not support Speech Recognition.");
+      speakBtn.disabled = true;
+    }
+
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    if (recognition) {
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        statusSpan.textContent = "Listening...";
+        responseDiv.textContent = "";
+        transcriptDiv.textContent = "";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        transcriptDiv.textContent = "You said: " + transcript;
+        statusSpan.textContent = "Sending to Zara...";
+        sendQuery(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        statusSpan.textContent = "Error: " + event.error;
+      };
+
+      recognition.onend = () => {
+        statusSpan.textContent = "";
+      };
+
+      speakBtn.onclick = () => {
+        recognition.start();
+      };
+    }
+
+    function sendQuery(text) {
+      fetch('http://YOUR_PC_IP:5000/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text })
+      })
+      .then(response => response.json())
+      .then(data => {
+        responseDiv.textContent = "Zara: " + (data.response || data.error || "No response");
+        statusSpan.textContent = "";
+      })
+      .catch(err => {
+        responseDiv.textContent = "Error: " + err;
+        statusSpan.textContent = "";
+      });
+    }
+  </script>
+</body>
+</html>
